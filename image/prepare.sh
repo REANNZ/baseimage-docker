@@ -15,11 +15,6 @@ export INITRD=no
 mkdir -p /etc/container_environment
 echo -n no > /etc/container_environment/INITRD
 
-## Enable Ubuntu Universe and Multiverse.
-sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
-sed -i 's/^#\s*\(deb.*multiverse\)$/\1/g' /etc/apt/sources.list
-apt-get update
-
 ## Fix some issues with APT packages.
 ## See https://github.com/dotcloud/docker/issues/1024
 dpkg-divert --local --rename --add /sbin/initctl
@@ -37,6 +32,16 @@ $minimal_apt_get_install apt-transport-https ca-certificates
 
 ## Install add-apt-repository
 $minimal_apt_get_install software-properties-common
+
+## Enable Ubuntu Universe and Multiverse.
+for repo in universe multiverse; do
+    if grep -q "deb.*${repo}"; then
+        sed -i "s/^#\s*\(deb.*${repo}\)$/\1/g" /etc/apt/sources.list
+    else
+        add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) ${repo}"
+    fi
+done
+apt-get update
 
 ## Upgrade all packages.
 apt-get dist-upgrade -y --no-install-recommends
