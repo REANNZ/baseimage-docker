@@ -3,6 +3,9 @@ set -e
 source /build/buildconfig
 set -x
 
+# Make sure we are up to date
+apt-get update
+
 ## Temporarily disable dpkg fsync to make building faster.
 if [[ ! -e /etc/dpkg/dpkg.cfg.d/docker-apt-speedup ]]; then
 	echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup
@@ -27,21 +30,16 @@ ln -sf /bin/true /sbin/initctl
 dpkg-divert --local --rename --add /usr/bin/ischroot
 ln -sf /bin/true /usr/bin/ischroot
 
+## Install HTTPS support for APT.
+$minimal_apt_get_install apt-transport-https ca-certificates
+
 ## Install add-apt-repository
 $minimal_apt_get_install software-properties-common
 
 ## Enable Ubuntu Universe and Multiverse.
-for repo in universe multiverse; do
-    if grep -q "deb.*${repo}"; then
-        sed -i "s/^#\s*\(deb.*${repo}\)$/\1/g" /etc/apt/sources.list
-    else
-        add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) ${repo}"
-    fi
-done
+add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"
+add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) multiverse"
 apt-get update
-
-## Install HTTPS support for APT.
-$minimal_apt_get_install apt-transport-https ca-certificates
 
 ## Upgrade all packages.
 apt-get dist-upgrade -y --no-install-recommends
